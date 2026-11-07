@@ -15,10 +15,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.espensestracker.data.TYPE_DEBIT
-import com.example.espensestracker.util.dayLabel
-import com.example.espensestracker.util.formatMoney
-import com.example.espensestracker.util.startOfDay
+import com.example.expensetracker.data.TYPE_DEBIT
+import com.example.expensetracker.util.dayLabel
+import com.example.expensetracker.util.formatMoney
+import com.example.expensetracker.util.startOfDay
 
 @Composable
 fun TransactionsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {

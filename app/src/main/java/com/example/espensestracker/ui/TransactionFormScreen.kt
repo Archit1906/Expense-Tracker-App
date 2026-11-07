@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontFamily
-import com.example.espensestracker.data.*
-import com.example.espensestracker.sms.SmsParser
+import com.example.expensetracker.data.*
+import com.example.expensetracker.sms.SmsParser
 
 /** Used for both "new transaction" (id = -1) and "expense detail / edit". */
 @OptIn(ExperimentalLayoutApi::class)

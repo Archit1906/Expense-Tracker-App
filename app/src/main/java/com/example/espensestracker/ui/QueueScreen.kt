@@ -14,11 +14,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.espensestracker.data.CATEGORY_LIST
-import com.example.espensestracker.data.UnparsedSms
-import com.example.espensestracker.sms.SmsParser
-import com.example.espensestracker.util.formatDateTime
-import com.example.espensestracker.util.formatMoney
+import com.example.expensetracker.data.CATEGORY_LIST
+import com.example.expensetracker.data.UnparsedSms
+import com.example.expensetracker.sms.SmsParser
+import com.example.expensetracker.util.formatDateTime
+import com.example.expensetracker.util.formatMoney
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

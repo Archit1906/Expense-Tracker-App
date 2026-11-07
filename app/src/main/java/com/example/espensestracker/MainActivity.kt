@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,7 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.espensestracker.ui.*
+import com.example.expensetracker.ui.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,7 +79,7 @@ fun ExpenseApp(vm: ExpenseViewModel = viewModel()) {
         NavHost(nav, "home", Modifier.padding(pad)) {
             composable("home") { HomeScreen(vm, { nav.navigate("form/$it") }, { nav.navigate("transactions") }) }
             composable("transactions") { TransactionsScreen(vm) { nav.navigate("form/$it") } }
-            composable("insights") { Soon("Insights", "Charts and month-over-month analytics arrive in Phase 4.") }
+            composable("insights") { InsightsScreen(vm) { nav.navigate("form/$it") } }
             composable("settings") { Soon("Settings", "Budget, categories, export and app lock arrive in Phase 5.") }
             composable("form/{id}", listOf(navArgument("id") { type = NavType.LongType })) {
                 TransactionFormScreen(vm, it.arguments?.getLong("id") ?: -1L) { nav.popBackStack() }

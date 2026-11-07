@@ -17,10 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.espensestracker.data.SOURCE_SMS
-import com.example.espensestracker.data.TYPE_DEBIT
-import com.example.espensestracker.data.catOf
-import com.example.espensestracker.util.*
+import com.example.expensetracker.data.SOURCE_SMS
+import com.example.expensetracker.data.TYPE_DEBIT
+import com.example.expensetracker.data.catOf
+import com.example.expensetracker.util.*
 import java.util.Calendar
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -34,6 +34,10 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
     val day = cal.get(Calendar.DAY_OF_MONTH)
     val daysLeft = cal.getActualMaximum(Calendar.DAY_OF_MONTH) - day
     val pct = (spent / MONTHLY_BUDGET).coerceIn(0.0, 1.0).toFloat()
+    // Same-length comparison: this month so far vs the first `day` days of last month.
+    val last = monthRange(-1)
+    val lastSame = all.filter { it.type == TYPE_DEBIT && it.timestamp in last.start..minOf(last.end, last.start + day * 86_400_000L - 1) }.sumOf { it.amount }
+    val delta = if (lastSame > 0) (spent - lastSame) / lastSame * 100 else null
     val byCat = debits.groupBy { it.category }.mapValues { e -> e.value.sumOf { it.amount } }
         .toList().sortedByDescending { it.second }
     val greeting = when (cal.get(Calendar.HOUR_OF_DAY)) { in 0..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
@@ -57,7 +61,14 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
         SmsStatus(vm, all)
 
         Panel(color = PanelBg) {
-            Text("MONEY SPENT THIS MONTH", fontSize = 11.sp, color = Muted, letterSpacing = 1.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("MONEY SPENT THIS MONTH", fontSize = 11.sp, color = Muted, letterSpacing = 1.sp)
+                delta?.let {
+                    Surface(shape = RoundedCornerShape(50), color = Color.White) {
+                        Text("%+.1f%% vs last month".format(it), Modifier.padding(horizontal = 10.dp, vertical = 4.dp), fontSize = 11.sp, color = if (it > 0) Debit else Credit)
+                    }
+                }
+            }
             Text(formatMoney(spent, 0), fontSize = 34.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
