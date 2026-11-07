@@ -1,0 +1,37 @@
+package com.example.espensestracker.data
+
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
+
+const val TYPE_DEBIT = "DEBIT"
+const val TYPE_CREDIT = "CREDIT"
+const val SOURCE_MANUAL = "MANUAL"
+const val SOURCE_SMS = "SMS"
+
+/**
+ * One money movement. Fields like rawSms / sender / smsHash stay null for manual
+ * entries and get filled in Phase 2 when SMS parsing is added.
+ * smsHash is unique (SQLite allows many NULLs), which gives us dedup later.
+ */
+@Entity(
+    tableName = "transactions",
+    indices = [Index(value = ["smsHash"], unique = true)]
+)
+data class Transaction(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val amount: Double,
+    val type: String = TYPE_DEBIT,
+    val merchant: String? = null,
+    val category: String = "Other",
+    val account: String? = null,
+    val refNo: String? = null,
+    val timestamp: Long = System.currentTimeMillis(),
+    val note: String? = null,
+    val source: String = SOURCE_MANUAL,
+    val rawSms: String? = null,
+    val sender: String? = null,
+    val smsHash: String? = null,
+    val taxDeductible: Boolean = false,
+    val merchantKey: String? = null
+)
