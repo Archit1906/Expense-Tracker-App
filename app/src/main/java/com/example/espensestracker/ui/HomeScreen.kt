@@ -17,10 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.expensetracker.data.SOURCE_SMS
-import com.example.expensetracker.data.TYPE_DEBIT
-import com.example.expensetracker.data.catOf
-import com.example.expensetracker.util.*
+import com.example.espensestracker.data.SOURCE_SMS
+import com.example.espensestracker.data.TYPE_DEBIT
+import com.example.espensestracker.data.catOf
+import com.example.espensestracker.util.*
 import java.util.Calendar
 
 @OptIn(ExperimentalLayoutApi::class)

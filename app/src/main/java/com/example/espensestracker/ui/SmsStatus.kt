@@ -16,9 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.expensetracker.data.SOURCE_SMS
-import com.example.expensetracker.data.Transaction
-import com.example.expensetracker.sms.SmsParser
+import com.example.espensestracker.data.SOURCE_SMS
+import com.example.espensestracker.data.Transaction
+import com.example.espensestracker.sms.SmsParser
 
 private val SMS_PERMISSIONS = arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS)
 

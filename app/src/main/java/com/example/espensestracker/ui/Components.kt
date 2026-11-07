@@ -17,12 +17,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.expensetracker.data.SOURCE_SMS
-import com.example.expensetracker.data.TYPE_DEBIT
-import com.example.expensetracker.data.Transaction
-import com.example.expensetracker.data.catOf
-import com.example.expensetracker.util.formatDateTime
-import com.example.expensetracker.util.formatMoney
+import com.example.espensestracker.data.SOURCE_SMS
+import com.example.espensestracker.data.TYPE_DEBIT
+import com.example.espensestracker.data.Transaction
+import com.example.espensestracker.data.catOf
+import com.example.espensestracker.util.formatDateTime
+import com.example.espensestracker.util.formatMoney
 
 val Gold = Color(0xFFC4A055)
 val Navy = Color(0xFF2B3445)
