@@ -33,7 +33,7 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
     val cal = Calendar.getInstance()
     val day = cal.get(Calendar.DAY_OF_MONTH)
     val daysLeft = cal.getActualMaximum(Calendar.DAY_OF_MONTH) - day
-    val pct = (spent / MONTHLY_BUDGET).coerceIn(0.0, 1.0).toFloat()
+    val pct = (spent / AppSettings.budget).coerceIn(0.0, 1.0).toFloat()
     // Same-length comparison: this month so far vs the first `day` days of last month.
     val last = monthRange(-1)
     val lastSame = all.filter { it.type == TYPE_DEBIT && it.timestamp in last.start..minOf(last.end, last.start + day * 86_400_000L - 1) }.sumOf { it.amount }
@@ -72,7 +72,7 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
             Text(formatMoney(spent, 0), fontSize = 34.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Budget limit: ${formatMoney(MONTHLY_BUDGET, 0)}", fontSize = 12.sp)
+                Text("Budget limit: ${formatMoney(AppSettings.budget, 0)}", fontSize = 12.sp)
                 Text("${(pct * 100).toInt()}% used", fontSize = 12.sp)
             }
             Spacer(Modifier.height(6.dp))

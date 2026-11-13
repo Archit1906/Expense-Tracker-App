@@ -2,20 +2,15 @@ package com.example.espensestracker.ui
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.espensestracker.data.AppDatabase
-import com.example.espensestracker.data.SOURCE_MANUAL
-import com.example.espensestracker.data.Transaction
-import com.example.espensestracker.data.UnparsedSms
+import com.example.espensestracker.data.*
 import com.example.espensestracker.sms.SmsParser
 import com.example.espensestracker.sms.SmsProcessor
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import com.example.espensestracker.util.toCsv
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class ExpenseViewModel(app: Application) : AndroidViewModel(app) {
@@ -30,11 +25,17 @@ class ExpenseViewModel(app: Application) : AndroidViewModel(app) {
     val pending: StateFlow<List<UnparsedSms>> = db.unparsedSmsDao().observePending()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val ruleCount: StateFlow<Int> = db.merchantRuleDao().observeAll().map { it.size }
+    val rules: StateFlow<List<MerchantRule>> = db.merchantRuleDao().observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val ruleCount: StateFlow<Int> = rules.map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     private val _importing = MutableStateFlow(false)
     val importing: StateFlow<Boolean> = _importing.asStateFlow()
+
+    private val _notice = MutableStateFlow<String?>(null)
+    val notice: StateFlow<String?> = _notice.asStateFlow()
 
     init {
         if (!prefs.getBoolean("keys_v3", false)) {
@@ -72,8 +73,31 @@ class ExpenseViewModel(app: Application) : AndroidViewModel(app) {
     fun rescan() {
         viewModelScope.launch {
             _importing.value = true
-            try { processor.importInbox() } finally { _importing.value = false }
+            try {
+                val n = processor.importInbox()
+                _notice.value = "Inbox scan finished: $n new item(s)."
+            } finally { _importing.value = false }
         }
+    }
+
+    fun reparse() {
+        viewModelScope.launch { _notice.value = "Re-checked: ${processor.reparse()} item(s) updated." }
+    }
+
+    fun exportCsv(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val list = dao.getAllOnce()
+                getApplication<Application>().contentResolver.openOutputStream(uri)?.use { it.write(toCsv(list).toByteArray()) }
+                _notice.value = "Exported ${list.size} transaction(s)."
+            } catch (e: Exception) {
+                _notice.value = "Export failed: ${e.message}"
+            }
+        }
+    }
+
+    fun deleteRule(key: String) {
+        viewModelScope.launch { db.merchantRuleDao().delete(key) }
     }
 
     fun assign(s: UnparsedSms, category: String, merchant: String?) {

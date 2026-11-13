@@ -51,4 +51,7 @@ interface UnparsedSmsDao {
 
     @Query("UPDATE unparsed_sms SET merchantKey = :key WHERE id = :id")
     suspend fun setKey(id: Long, key: String)
+
+    @Query("SELECT * FROM unparsed_sms WHERE dismissed = 0")
+    suspend fun pendingAll(): List<UnparsedSms>
 }

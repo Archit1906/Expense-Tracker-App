@@ -111,7 +111,7 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CompareTile(
                     if (offset == 0) "This month (so far)" else cur.label, spent,
-                    (spent / MONTHLY_BUDGET).toFloat(), Gold, "${"%.1f".format(spent / MONTHLY_BUDGET * 100)}% of ceiling", Modifier.weight(1f)
+                    (spent / AppSettings.budget).toFloat(), Gold, "${"%.1f".format(spent / AppSettings.budget * 100)}% of ceiling", Modifier.weight(1f)
                 )
                 CompareTile("Last month", lastSpent, (lastSpent / maxOf(spent, lastSpent, 1.0)).toFloat(), Navy, "Baseline total", Modifier.weight(1f))
             }
@@ -127,8 +127,8 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
                         fontWeight = FontWeight.SemiBold, fontSize = 14.sp
                     )
                     Text(
-                        (if (spent <= MONTHLY_BUDGET) "Under ${formatMoney(MONTHLY_BUDGET, 0)} ceiling"
-                        else "Over the ${formatMoney(MONTHLY_BUDGET, 0)} ceiling by ${formatMoney(spent - MONTHLY_BUDGET, 0)}") +
+                        (if (spent <= AppSettings.budget) "Under ${formatMoney(AppSettings.budget, 0)} ceiling"
+                        else "Over the ${formatMoney(AppSettings.budget, 0)} ceiling by ${formatMoney(spent - AppSettings.budget, 0)}") +
                             if (offset == 0) " • month in progress" else "",
                         fontSize = 12.sp, color = Muted
                     )

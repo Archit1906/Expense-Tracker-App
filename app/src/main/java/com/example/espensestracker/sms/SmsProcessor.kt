@@ -27,7 +27,7 @@ class SmsProcessor(context: Context) {
                 val s = r.sms
                 val rule = s.merchantKey?.let { ruleDao.get(it) }
                 if (rule != null) store(toTx(s, rule.category, rule.displayName))   // learned: skip the queue
-                else !isDuplicate(s.smsHash, s.amount, TYPE_DEBIT, s.refNo, s.timestamp) && unDao.insert(s) > 0
+                else !isDuplicate(s.smsHash, s.amount, TYPE_DEBIT, s.refNo, s.timestamp, s.account) && unDao.insert(s) > 0
             }
             ParseResult.Ignore -> false
         }
@@ -39,16 +39,16 @@ class SmsProcessor(context: Context) {
     }
 
     private suspend fun store(t: Transaction): Boolean =
-        !isDuplicate(t.smsHash!!, t.amount, t.type, t.refNo, t.timestamp) && txDao.insertIfNew(t) > 0
+        !isDuplicate(t.smsHash!!, t.amount, t.type, t.refNo, t.timestamp, t.account) && txDao.insertIfNew(t) > 0
 
     /**
      * 1) same SMS hash  2) same ref no + amount (bank SMS and UPI-app SMS for one payment)
-     * 3) no ref no: same amount and type within 2 minutes.
+     * 3) no ref no: same amount, type and card within 2 minutes.
      */
-    private suspend fun isDuplicate(hash: String, amount: Double, type: String, ref: String?, ts: Long): Boolean {
+    private suspend fun isDuplicate(hash: String, amount: Double, type: String, ref: String?, ts: Long, account: String?): Boolean {
         if (txDao.countHash(hash) > 0) return true
         if (ref != null) return txDao.countRef(ref, amount) > 0
-        return txDao.countNear(amount, type, ts - 120_000, ts + 120_000) > 0
+        return txDao.countNear(amount, type, ts - 120_000, ts + 120_000, account) > 0
     }
 
     /** Reads the SMS inbox (last [days] days) through the same pipeline as live messages. */
@@ -114,6 +114,29 @@ class SmsProcessor(context: Context) {
             }
             if (key != null) unDao.setKey(s.id, key)
         }
+    }
+
+    /**
+     * Re-run the current parser and rules over stored data. Only "Other" transactions and the
+     * review queue are touched, so categories you chose yourself are never overwritten.
+     */
+    suspend fun reparse(): Int = withContext(Dispatchers.IO) {
+        var n = 0
+        for (t in txDao.otherSms()) {
+            val upd: Pair<String, String?>? = when (val r = SmsParser.parse(t.sender.orEmpty(), t.rawSms.orEmpty(), t.timestamp)) {
+                is ParseResult.Ok -> withRule(r.tx).let { it.category to it.merchant }
+                is ParseResult.Review -> r.sms.merchantKey?.let { ruleDao.get(it) }?.let { it.category to it.displayName }
+                ParseResult.Ignore -> null
+            }
+            if (upd != null && upd.first != "Other") {
+                txDao.update(t.copy(category = upd.first, merchant = upd.second ?: t.merchant))
+                n++
+            }
+        }
+        for (s in unDao.pendingAll()) {
+            if (process(s.sender, s.body, s.timestamp)) { unDao.delete(s); n++ }
+        }
+        n
     }
 
     suspend fun dismiss(s: UnparsedSms) = unDao.dismiss(s.id)

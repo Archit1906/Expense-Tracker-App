@@ -30,14 +30,24 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions WHERE refNo = :ref AND amount = :amount")
     suspend fun countRef(ref: String, amount: Double): Int
 
-    @Query("SELECT COUNT(*) FROM transactions WHERE amount = :amount AND type = :type AND timestamp BETWEEN :from AND :to")
-    suspend fun countNear(amount: Double, type: String, from: Long, to: Long): Int
+    @Query(
+        "SELECT COUNT(*) FROM transactions WHERE amount = :amount AND type = :type " +
+            "AND timestamp BETWEEN :from AND :to " +
+            "AND (:account IS NULL OR account IS NULL OR account = :account)"
+    )
+    suspend fun countNear(amount: Double, type: String, from: Long, to: Long, account: String?): Int
 
     @Query("UPDATE transactions SET category = :category, merchant = COALESCE(:merchant, merchant) WHERE merchantKey = :key")
     suspend fun applyRule(key: String, category: String, merchant: String?)
 
     @Query("SELECT * FROM transactions WHERE merchantKey IS NULL")
     suspend fun missingKeys(): List<Transaction>
+
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
+    suspend fun getAllOnce(): List<Transaction>
+
+    @Query("SELECT * FROM transactions WHERE rawSms IS NOT NULL AND category = 'Other'")
+    suspend fun otherSms(): List<Transaction>
 
     @Update
     suspend fun update(transaction: Transaction)
