@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.espensestracker.data.TYPE_DEBIT
+import com.example.espensestracker.data.spend
 import com.example.espensestracker.util.dayLabel
 import com.example.espensestracker.util.formatMoney
 import com.example.espensestracker.util.startOfDay
@@ -64,7 +65,7 @@ fun TransactionsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
                         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(dayLabel(day), fontWeight = FontWeight.SemiBold)
                             Surface(shape = RoundedCornerShape(8.dp), color = PanelBg) {
-                                Text("Total Outflow: " + formatMoney(list.filter { it.type == TYPE_DEBIT }.sumOf { it.amount }), Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 11.sp)
+                                Text("Total Outflow: " + formatMoney(maxOf(0.0, list.sumOf { it.spend() })), Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 11.sp)
                             }
                         }
                     }

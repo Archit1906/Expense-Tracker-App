@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.espensestracker.data.TYPE_DEBIT
+import com.example.espensestracker.data.spend
 import com.example.espensestracker.data.Transaction
 import com.example.espensestracker.data.catOf
 import com.example.espensestracker.sms.SmsParser
@@ -55,20 +56,23 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
     val cur = monthRange(offset)
     val prev = monthRange(offset - 1)
     val inCur = all.filter { it.timestamp in cur.start..cur.end && keep(it) }
-    val debits = inCur.filter { it.type == TYPE_DEBIT }
-    val spent = debits.sumOf { it.amount }
-    val lastSpent = all.filter { it.timestamp in prev.start..prev.end && it.type == TYPE_DEBIT && keep(it) }.sumOf { it.amount }
+    val debits = inCur.filter { it.spend() != 0.0 }
+    val spent = debits.sumOf { it.spend() }
+    val lastSpent = all.filter { it.timestamp in prev.start..prev.end && keep(it) }.sumOf { it.spend() }
 
     val shown = if (offset == 0) Calendar.getInstance().get(Calendar.DAY_OF_MONTH) else cur.days
-    val daily = DoubleArray(cur.days).also { arr -> debits.forEach { arr[dayOfMonth(it.timestamp) - 1] += it.amount } }
+    val daily = DoubleArray(cur.days).also { arr ->
+        debits.forEach { arr[dayOfMonth(it.timestamp) - 1] += it.spend() }
+        for (i in arr.indices) arr[i] = arr[i].coerceAtLeast(0.0)
+    }
     val avg = spent / shown
     val peak = (0 until shown).maxByOrNull { daily[it] } ?: 0
-    val peakTop = debits.filter { dayOfMonth(it.timestamp) == peak + 1 }.maxByOrNull { it.amount }
-    val byCat = debits.groupBy { it.category }.mapValues { e -> e.value.sumOf { it.amount } }
-        .toList().sortedByDescending { it.second }
+    val peakTop = debits.filter { it.type == TYPE_DEBIT && dayOfMonth(it.timestamp) == peak + 1 }.maxByOrNull { it.amount }
+    val byCat = debits.groupBy { it.category }.mapValues { e -> e.value.sumOf { it.spend() } }
+        .toList().filter { it.second > 0 }.sortedByDescending { it.second }
     val places = debits.groupBy { it.merchantKey ?: it.merchant ?: it.category }.values
-        .map { l -> Triple(l.firstNotNullOfOrNull { it.merchant } ?: l.first().category, l.sumOf { it.amount }, l) }
-        .sortedByDescending { it.second }.take(5)
+        .map { l -> Triple(l.firstNotNullOfOrNull { it.merchant } ?: l.first().category, l.sumOf { it.spend() }, l) }
+        .filter { it.second > 0 }.sortedByDescending { it.second }.take(5)
 
     Column(
         Modifier.verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = 72.dp),
@@ -136,7 +140,7 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
             }
         }
 
-        if (debits.isEmpty()) {
+        if (spent <= 0.0) {
             Panel { Text("No payments match for ${cur.label}.", color = Muted) }
         } else {
             Panel {
@@ -172,7 +176,7 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Dot(catOf(c).color); Text(c, fontSize = 11.sp, maxLines = 1)
                                 }
-                                Text("%.0f%%".format(a / spent * 100), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                Text("%.0f%%".format(a / byCat.sumOf { it.second } * 100), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                                 Text(formatMoney(a, 0), fontSize = 11.sp, color = Muted)
                             }
                         }

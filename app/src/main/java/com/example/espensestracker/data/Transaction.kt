@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 
 const val TYPE_DEBIT = "DEBIT"
 const val TYPE_CREDIT = "CREDIT"
+const val TYPE_REFUND = "REFUND"
 const val SOURCE_MANUAL = "MANUAL"
 const val SOURCE_SMS = "SMS"
 
@@ -35,3 +36,14 @@ data class Transaction(
     val taxDeductible: Boolean = false,
     val merchantKey: String? = null
 )
+
+/**
+ * How much this transaction changes your real spending:
+ * expenses add, refunds subtract, transfers (card-bill payments, own-account moves) and income count as 0.
+ */
+fun Transaction.spend(): Double = when {
+    category == TRANSFER_CATEGORY -> 0.0
+    type == TYPE_DEBIT -> amount
+    type == TYPE_REFUND -> -amount
+    else -> 0.0
+}

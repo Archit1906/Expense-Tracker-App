@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.espensestracker.data.SOURCE_SMS
 import com.example.espensestracker.data.TYPE_DEBIT
+import com.example.espensestracker.data.TYPE_REFUND
 import com.example.espensestracker.data.Transaction
 import com.example.espensestracker.data.catOf
 import com.example.espensestracker.util.formatDateTime
@@ -68,7 +69,7 @@ fun TxRow(t: Transaction, onClick: () -> Unit) {
             CatIcon(t.category)
             Column(Modifier.weight(1f)) {
                 Text(t.merchant ?: t.category, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                Text("${t.category} • ${formatDateTime(t.timestamp)}", fontSize = 12.sp, color = Muted, maxLines = 1)
+                Text((if (t.type == TYPE_REFUND) "Refund • " else "") + "${t.category} • ${formatDateTime(t.timestamp)}", fontSize = 12.sp, color = Muted, maxLines = 1)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text((if (debit) "-" else "+") + formatMoney(t.amount), fontWeight = FontWeight.SemiBold, color = if (debit) Debit else Credit)

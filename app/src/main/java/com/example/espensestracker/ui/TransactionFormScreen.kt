@@ -55,6 +55,7 @@ fun TransactionFormScreen(vm: ExpenseViewModel, id: Long, onDone: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(type == TYPE_DEBIT, { type = TYPE_DEBIT }, { Text("Expense") }, colors = chipColors())
                 FilterChip(type == TYPE_CREDIT, { type = TYPE_CREDIT }, { Text("Income") }, colors = chipColors())
+                FilterChip(type == TYPE_REFUND, { type = TYPE_REFUND }, { Text("Refund") }, colors = chipColors())
             }
             Spacer(Modifier.height(12.dp))
             Text("TOTAL AMOUNT", fontSize = 11.sp, color = Muted)

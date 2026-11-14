@@ -1,6 +1,8 @@
 package com.example.espensestracker.sms
 
+import com.example.espensestracker.data.TRANSFER_CATEGORY
 import com.example.espensestracker.data.TYPE_CREDIT
+import com.example.espensestracker.data.TYPE_REFUND
 import com.example.espensestracker.data.TYPE_DEBIT
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -56,5 +58,22 @@ class SmsParserTest {
         assertEquals("merchant9823", vpa.sms.merchantKey)
         val pos = p("BZ-ICICIB", "Dear Customer, your Acct XX8820 is debited with INR 850.00 on 18-Oct-26 at POS 883920 BLR. Avail Bal: INR 1,42,390.40") as ParseResult.Review
         assertEquals("pos883920", pos.sms.merchantKey)
+    }
+
+    @Test fun refundIsLinkedToMerchant() {
+        val r = p("VM-HDFCBK", "Rs 250.00 refunded from Swiggy on 19-Oct-26 to your A/c XX1234. Ref 123456789012.") as ParseResult.Ok
+        assertEquals(TYPE_REFUND, r.tx.type)
+        assertEquals("Swiggy", r.tx.merchant)
+        assertEquals("Food & Dining", r.tx.category)
+    }
+
+    @Test fun cardBillPaymentFromBankIsTransfer() {
+        val r = p("VM-HDFCBK", "Rs.5,000.00 debited from A/c XX4921 towards HDFC Credit Card XX1004 bill payment on 19-10-26. Ref 4293810555.") as ParseResult.Ok
+        assertEquals(TRANSFER_CATEGORY, r.tx.category)
+    }
+
+    @Test fun cardBillPaymentOnCardSideIsTransfer() {
+        val r = p("VK-SBICRD", "Payment of Rs.5,000.00 received towards your SBI Credit Card ending 3312 on 19-10-26.") as ParseResult.Ok
+        assertEquals(TRANSFER_CATEGORY, r.tx.category)
     }
 }

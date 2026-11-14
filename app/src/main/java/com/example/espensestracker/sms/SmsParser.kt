@@ -1,7 +1,9 @@
 package com.example.espensestracker.sms
 
 import com.example.espensestracker.data.SOURCE_SMS
+import com.example.espensestracker.data.TRANSFER_CATEGORY
 import com.example.espensestracker.data.TYPE_CREDIT
+import com.example.espensestracker.data.TYPE_REFUND
 import com.example.espensestracker.data.TYPE_DEBIT
 import com.example.espensestracker.data.Transaction
 import com.example.espensestracker.data.UnparsedSms
@@ -18,7 +20,11 @@ object SmsParser {
     private val I = RegexOption.IGNORE_CASE
     private val amountRx = Regex("""(?:\bRs\.?|\bINR|₹)\s?([\d,]+(?:\.\d{1,2})?)""", I)
     private val debitRx = Regex("""\b(?:debited|spent|paid|sent|withdrawn|purchase)\b""", I)
-    private val creditRx = Regex("""\b(?:credited|received|deposited|refund(?:ed)?)\b""", I)
+    private val creditRx = Regex("""\b(?:credited|received|deposited|refund(?:ed)?|revers(?:al|ed))\b""", I)
+    private val refundRx = Regex("""\b(?:refund(?:ed)?|revers(?:al|ed))\b""", I)
+    private val cardWordRx = Regex("""card""", I)
+    // Card-bill payments and own-account moves: money moving between your accounts, not spending.
+    private val transferRx = Regex("""credit card (?:bill|payment)|card bill|towards .{0,25}credit card|payment (?:of .{0,20} )?received (?:towards|on|for) (?:your )?.{0,20}card|\bCRED\b|self[- ]?transfer|own account""", I)
     private val strongRx = Regex("""\b(?:debited|credited|spent)\b""", I)
     private val promoRx = Regex("""\b(?:offer|win|apply now|click|pre-approved|loan)\b|https?://|www\.""", I)
     private val hintRx = Regex("""a/c|acct|account|card|upi|vpa|bank""", I)
@@ -30,7 +36,7 @@ object SmsParser {
     private val foreignRx = Regex("""INTNL|INTERNATIONAL|FOREX""", I)
     private val atmRx = Regex("""\bATM\b""", I)
     private val nameRx = Regex("""\b(?:at|to|towards|info:?)\s+([A-Za-z][A-Za-z0-9 &.'*-]{2,30}?)(?=\s+(?:on|via|ref|using|upi|avl|avail|bal|\d)|[.,;]|$)""", I)
-    private val fromRx = Regex("""\bfrom\s+([A-Za-z][A-Za-z .&-]{2,30}?)(?=\s*[.,;]|\s+(?:on|ref|via|upi|\d)|$)""", I)
+    private val fromRx = Regex("""\bfrom\s+([A-Za-z][A-Za-z .&-]{2,30}?)(?=\s*[.,;]|\s+(?:on|ref|via|upi|credited|to|into|\d)|$)""", I)
     private val phoneSender = Regex("""[+\d\s-]+""")
 
     private class Rule(pattern: String, val display: String?, val category: String) {
@@ -72,11 +78,12 @@ object SmsParser {
             !body.substring(maxOf(0, m.range.first - 12), m.range.first).contains(balRx)
         }?.groupValues?.get(1)?.replace(",", "")?.toDoubleOrNull() ?: return ParseResult.Ignore
 
-        val type = if (cm == null || (dm != null && dm.range.first < cm.range.first)) TYPE_DEBIT else TYPE_CREDIT
+        val baseType = if (cm == null || (dm != null && dm.range.first < cm.range.first)) TYPE_DEBIT else TYPE_CREDIT
+        val type = if (baseType == TYPE_CREDIT && refundRx.containsMatchIn(body)) TYPE_REFUND else baseType
         val account = accountRx.find(body)?.groupValues?.get(1)
         val ref = refRx.find(body)?.groupValues?.get(1)
         val vpa = vpaRx.find(body)?.groupValues?.get(1)
-        val name = (if (type == TYPE_CREDIT) fromRx.find(body)?.groupValues?.get(1) else null)
+        val name = (if (type != TYPE_DEBIT) fromRx.find(body)?.groupValues?.get(1) else null)
             ?: nameRx.find(body)?.groupValues?.get(1)
         val hash = sha256("$sender|$timestamp|$body")
         val mkey = keyOf(vpa?.substringBefore('@') ?: posRx.find(body)?.value ?: name)
@@ -98,8 +105,10 @@ object SmsParser {
         val key = vpa?.substringBefore('@') ?: name
         val rule = key?.let { k -> RULES.firstNotNullOfOrNull { r -> r.rx.find(k)?.let { m -> r to m.value } } }
         return when {
+            transferRx.containsMatchIn(body) ->
+                ok(if (cardWordRx.containsMatchIn(body)) "Credit card payment" else "Transfer", TRANSFER_CATEGORY)
             rule != null -> ok(rule.first.display ?: pretty(rule.second), rule.first.category)
-            type == TYPE_CREDIT -> ok((name ?: vpa?.substringBefore('@'))?.let { pretty(it.trim()) }, "Other")
+            type != TYPE_DEBIT -> ok((name ?: vpa?.substringBefore('@'))?.let { pretty(it.trim()) }, "Other")
             atmRx.containsMatchIn(body) -> ok("ATM withdrawal", "Other")
             vpa != null -> review("Unmapped VPA handle")
             posRx.containsMatchIn(body) -> review("POS code unmapped")
