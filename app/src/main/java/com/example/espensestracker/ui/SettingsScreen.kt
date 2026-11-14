@@ -92,6 +92,20 @@ fun SettingsScreen(vm: ExpenseViewModel) {
         }
 
         Panel {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Net all received money", fontWeight = FontWeight.Bold)
+                    Text(
+                        "On: every credit (salary, friends paying you back, refunds) reduces your spending totals. " +
+                            "Off: only expenses minus refunds. Transfers are always ignored.",
+                        fontSize = 12.sp, color = Muted
+                    )
+                }
+                Switch(AppSettings.netCredits, { AppSettings.saveNetCredits(ctx, it) }, colors = SwitchDefaults.colors(checkedTrackColor = Gold))
+            }
+        }
+
+        Panel {
             Text("SMS reliability", fontWeight = FontWeight.Bold)
             Text(
                 if (batteryOk) "✅ Battery optimization is off for this app, so SMS capture won't be paused."
