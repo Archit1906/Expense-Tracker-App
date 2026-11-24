@@ -1,5 +1,6 @@
 package com.example.espensestracker.sms
 
+import com.example.espensestracker.data.AccountBalance
 import com.example.espensestracker.data.SOURCE_SMS
 import com.example.espensestracker.data.TRANSFER_CATEGORY
 import com.example.espensestracker.data.TYPE_CREDIT
@@ -59,6 +60,22 @@ object SmsParser {
         Rule("""\b(?:apollo|pharmeasy|1mg|medplus|netmeds)""", null, "Health"),
         Rule("""\b(?:bookmyshow|pvr|inox)""", null, "Entertainment")
     )
+
+    private val balanceRx = Regex(
+        """\b(avail(?:able)?\.?\s*(?:bal(?:ance)?|limit)|avl\.?\s*(?:bal(?:ance)?|limit)|bal(?:ance)?)\s*(?:is|of|:|-|=)?\s*(?:INR|Rs\.?|₹)\s?([\d,]+(?:\.\d{1,2})?)""", I
+    )
+
+    /** Latest "Avail Bal" / "Avl Limit" in a bank SMS, if any (works even when the SMS is not a payment). */
+    fun balanceOf(sender: String, body: String, timestamp: Long): AccountBalance? {
+        if (sender.matches(phoneSender)) return null
+        val m = balanceRx.find(body) ?: return null
+        if (!hintRx.containsMatchIn(body)) return null
+        val amount = m.groupValues[2].replace(",", "").toDoubleOrNull() ?: return null
+        val kind = if (m.groupValues[1].contains("limit", ignoreCase = true)) "LIMIT" else "BALANCE"
+        val last4 = accountRx.find(body)?.groupValues?.get(1) ?: ""
+        val bank = bankName(sender)
+        return AccountBalance("$bank|$last4|$kind", bank, last4, kind, amount, timestamp)
+    }
 
     fun bankName(sender: String): String {
         val s = sender.substringAfter('-').uppercase()

@@ -28,6 +28,7 @@ import java.util.Calendar
 @Composable
 fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Unit) {
     val all by vm.transactions.collectAsStateWithLifecycle()
+    val balances by vm.balances.collectAsStateWithLifecycle()
     val month = all.filter { it.timestamp >= startOfMonthMillis() }
     val debits = month.filter { it.spend() != 0.0 }
     val spent = debits.sumOf { it.spend() }
@@ -39,6 +40,7 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
     val last = monthRange(-1)
     val lastSame = all.filter { it.timestamp in last.start..minOf(last.end, last.start + day * 86_400_000L - 1) }.sumOf { it.spend() }
     val delta = if (lastSame > 0) (spent - lastSame) / lastSame * 100 else null
+    val forecast = forecastMonthEnd(spent, day, day + daysLeft)
     val byCat = debits.groupBy { it.category }.mapValues { e -> e.value.sumOf { it.spend() } }
         .toList().filter { it.second > 0 }.sortedByDescending { it.second }
     val greeting = when (cal.get(Calendar.HOUR_OF_DAY)) { in 0..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
@@ -54,7 +56,7 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
                     Text("Financial Command", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            Surface(shape = RoundedCornerShape(50), color = Color.White) {
+            Surface(shape = RoundedCornerShape(50), color = CardBg) {
                 Text(monthLabel(), Modifier.padding(horizontal = 14.dp, vertical = 8.dp), fontSize = 13.sp)
             }
         }
@@ -65,7 +67,7 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("MONEY SPENT THIS MONTH", fontSize = 11.sp, color = Muted, letterSpacing = 1.sp)
                 delta?.let {
-                    Surface(shape = RoundedCornerShape(50), color = Color.White) {
+                    Surface(shape = RoundedCornerShape(50), color = CardBg) {
                         Text("%+.1f%% vs last month".format(it), Modifier.padding(horizontal = 10.dp, vertical = 4.dp), fontSize = 11.sp, color = if (it > 0) Debit else Credit)
                     }
                 }
@@ -77,13 +79,17 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
                 Text("${(pct * 100).toInt()}% used", fontSize = 12.sp)
             }
             Spacer(Modifier.height(6.dp))
-            LinearProgressIndicator(progress = { pct }, Modifier.fillMaxWidth().height(8.dp), color = Gold, trackColor = Color.White)
+            LinearProgressIndicator(progress = { pct }, Modifier.fillMaxWidth().height(8.dp), color = Gold, trackColor = CardBg)
+            Spacer(Modifier.height(8.dp))
+            Text(forecastLine(forecast, AppSettings.budget, day), fontSize = 12.sp, color = Muted)
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatTile("Daily Average", formatMoney(spent / day, 0), "$daysLeft days remaining", Modifier.weight(1f))
                 StatTile("Total Payments", "${month.size} items", "${month.count { it.source == SOURCE_SMS }} live via SMS", Modifier.weight(1f))
             }
         }
+
+        AccountsPanel(balances)
 
         Panel {
             Text("Spending Wheel", fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -119,7 +125,7 @@ fun HomeScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit, onSeeAll: () -> Uni
 
 @Composable
 private fun StatTile(label: String, value: String, sub: String, modifier: Modifier) {
-    Surface(modifier, shape = RoundedCornerShape(16.dp), color = Color.White) {
+    Surface(modifier, shape = RoundedCornerShape(16.dp), color = CardBg) {
         Column(Modifier.padding(14.dp)) {
             Text(label, fontSize = 11.sp, color = Muted)
             Text(value, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)

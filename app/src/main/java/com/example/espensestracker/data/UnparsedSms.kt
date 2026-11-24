@@ -54,4 +54,13 @@ interface UnparsedSmsDao {
 
     @Query("SELECT * FROM unparsed_sms WHERE dismissed = 0")
     suspend fun pendingAll(): List<UnparsedSms>
+
+    @Query("SELECT * FROM unparsed_sms")
+    suspend fun getAllOnce(): List<UnparsedSms>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(list: List<UnparsedSms>)
+
+    @Query("DELETE FROM unparsed_sms")
+    suspend fun deleteAll()
 }

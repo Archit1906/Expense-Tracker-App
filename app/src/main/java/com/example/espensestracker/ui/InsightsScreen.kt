@@ -100,7 +100,10 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item { FilterChip(category == null, { category = null }, { Text("All Categories") }, colors = chipColors()) }
-            items(cats) { c -> FilterChip(category == c, { category = c }, { Text("${catOf(c).emoji} $c") }, colors = chipColors()) }
+            items(cats) { c ->
+                FilterChip(category == c, { category = c }, { Text(c) },
+                    leadingIcon = { Icon(catOf(c).icon, null, Modifier.size(18.dp)) }, colors = chipColors())
+            }
         }
 
         if (q.isNotEmpty()) {
@@ -120,7 +123,7 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
                 CompareTile("Last month", lastSpent, (lastSpent / maxOf(spent, lastSpent, 1.0)).toFloat(), Navy, "Baseline total", Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
-            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = Color.White) {
+            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = CardBg) {
                 Column(Modifier.padding(14.dp)) {
                     Text(
                         when {
@@ -137,6 +140,22 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
                         fontSize = 12.sp, color = Muted
                     )
                 }
+            }
+        }
+
+        if (offset == 0) {
+            val forecast = forecastMonthEnd(spent, shown, cur.days)
+            Panel {
+                Text("Month-end forecast", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(formatMoney(forecast.coerceAtLeast(0.0), 0), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(forecastLine(forecast, AppSettings.budget, shown), fontSize = 12.sp, color = Muted)
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { (forecast / AppSettings.budget).toFloat().coerceIn(0f, 1f) }, Modifier.fillMaxWidth().height(6.dp),
+                    color = if (forecast > AppSettings.budget) Debit else Gold, trackColor = PanelBg
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("Straight-line estimate from your pace so far; big one-off payments can skew it.", fontSize = 11.sp, color = Muted)
             }
         }
 
@@ -212,7 +231,7 @@ fun InsightsScreen(vm: ExpenseViewModel, onOpen: (Long) -> Unit) {
 
 @Composable
 private fun CompareTile(title: String, amount: Double, progress: Float, color: Color, caption: String, modifier: Modifier) {
-    Surface(modifier, shape = RoundedCornerShape(16.dp), color = Color.White) {
+    Surface(modifier, shape = RoundedCornerShape(16.dp), color = CardBg) {
         Column(Modifier.padding(14.dp)) {
             Text(title, fontSize = 11.sp, color = Muted)
             Text(formatMoney(amount, 0), fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -226,6 +245,7 @@ private fun CompareTile(title: String, amount: Double, progress: Float, color: C
 
 @Composable
 private fun DailyBars(values: DoubleArray, shown: Int, avg: Double, peak: Int) {
+    val track = BarTrack
     val maxV = (values.take(shown).maxOrNull() ?: 0.0).coerceAtLeast(1.0)
     Canvas(Modifier.fillMaxWidth().height(140.dp)) {
         val slot = size.width / shown
@@ -233,7 +253,7 @@ private fun DailyBars(values: DoubleArray, shown: Int, avg: Double, peak: Int) {
         for (i in 0 until shown) {
             val h = ((values[i] / maxV).toFloat() * size.height).coerceAtLeast(2f)
             drawRoundRect(
-                if (i == peak && values[i] > 0) Gold else Color(0xFFE3DFD6),
+                if (i == peak && values[i] > 0) Gold else track,
                 Offset(i * slot + (slot - barW) / 2, size.height - h), Size(barW, h), CornerRadius(4.dp.toPx())
             )
         }

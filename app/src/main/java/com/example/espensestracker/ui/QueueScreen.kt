@@ -14,6 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import com.example.espensestracker.data.CATEGORY_LIST
 import com.example.espensestracker.data.UnparsedSms
 import com.example.espensestracker.sms.SmsParser
@@ -49,8 +51,11 @@ fun QueueScreen(vm: ExpenseViewModel, pending: List<UnparsedSms>) {
                         Text("Extracted Outflow", fontSize = 11.sp, color = Muted)
                         Text(formatMoney(s.amount), fontSize = 28.sp, fontWeight = FontWeight.Bold)
                     }
-                    Surface(shape = RoundedCornerShape(50), color = Color(0xFFFDECEA)) {
-                        Text("⚠ ${s.reason}", Modifier.padding(horizontal = 10.dp, vertical = 6.dp), fontSize = 11.sp, color = Debit)
+                    Surface(shape = RoundedCornerShape(50), color = DebitSoft) {
+                        Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.Warning, null, Modifier.size(14.dp), tint = Debit)
+                            Text(s.reason, fontSize = 11.sp, color = Debit)
+                        }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -73,7 +78,7 @@ fun QueueScreen(vm: ExpenseViewModel, pending: List<UnparsedSms>) {
                 if (pending.isNotEmpty()) TextButton({ vm.dismissAll() }) { Text("Dismiss all ${pending.size}", color = Debit) }
             }
         }
-        item { Text("✨ Auto-learning: $rules merchant rule(s) saved. Assigning a category teaches the app.", fontSize = 12.sp, color = Muted) }
+        item { Text("Auto-learning: $rules merchant rule(s) saved. Assigning a category teaches the app.", fontSize = 12.sp, color = Muted) }
         item {
             Panel(color = PanelBg) {
                 Text("All SMS processing happens locally on this device. Messages and account numbers are never sent to external servers.", fontSize = 12.sp, color = Muted)
@@ -92,7 +97,7 @@ fun QueueScreen(vm: ExpenseViewModel, pending: List<UnparsedSms>) {
                     OutlinedTextField(merchant, { merchant = it }, label = { Text("Merchant name (optional)") }, singleLine = true)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         CATEGORY_LIST.forEach { c ->
-                            FilterChip(category == c.name, { category = c.name }, { Text("${c.emoji} ${c.name}", fontSize = 12.sp) }, colors = chipColors())
+                            FilterChip(category == c.name, { category = c.name }, { Text(c.name, fontSize = 12.sp) }, leadingIcon = { Icon(c.icon, null, Modifier.size(16.dp)) }, colors = chipColors())
                         }
                     }
                 }

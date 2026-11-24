@@ -7,12 +7,16 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Transaction::class, UnparsedSms::class, MerchantRule::class], version = 3, exportSchema = false)
+@Database(
+    entities = [Transaction::class, UnparsedSms::class, MerchantRule::class, AccountBalance::class],
+    version = 4, exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun transactionDao(): TransactionDao
     abstract fun unparsedSmsDao(): UnparsedSmsDao
     abstract fun merchantRuleDao(): MerchantRuleDao
+    abstract fun accountBalanceDao(): AccountBalanceDao
 
     companion object {
         @Volatile
@@ -42,10 +46,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `account_balances` (`accountKey` TEXT NOT NULL, " +
+                        "`bank` TEXT NOT NULL, `last4` TEXT NOT NULL, `kind` TEXT NOT NULL, " +
+                        "`amount` REAL NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`accountKey`))"
+                )
+            }
+        }
+
         fun get(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "expenses.db")
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build().also { INSTANCE = it }
             }
     }

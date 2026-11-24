@@ -2,6 +2,7 @@ package com.example.espensestracker.sms
 
 import android.content.Context
 import android.provider.Telephony
+import com.example.espensestracker.data.AccountBalance
 import com.example.espensestracker.data.AppDatabase
 import com.example.espensestracker.data.MerchantRule
 import com.example.espensestracker.data.SOURCE_SMS
@@ -18,19 +19,22 @@ class SmsProcessor(context: Context) {
     private val txDao = db.transactionDao()
     private val unDao = db.unparsedSmsDao()
     private val ruleDao = db.merchantRuleDao()
+    private val balDao = db.accountBalanceDao()
 
     /** Returns true if something new was stored. */
-    suspend fun process(sender: String, body: String, timestamp: Long): Boolean =
-        when (val r = SmsParser.parse(sender, body, timestamp)) {
-            is ParseResult.Ok -> store(withRule(r.tx))
+    suspend fun process(sender: String, body: String, timestamp: Long, onNewTx: (suspend (Transaction) -> Unit)? = null): Boolean {
+        SmsParser.balanceOf(sender, body, timestamp)?.let { saveBalance(it) }
+        return when (val r = SmsParser.parse(sender, body, timestamp)) {
+            is ParseResult.Ok -> store(withRule(r.tx), onNewTx)
             is ParseResult.Review -> {
                 val s = r.sms
                 val rule = s.merchantKey?.let { ruleDao.get(it) }
-                if (rule != null) store(toTx(s, rule.category, rule.displayName))   // learned: skip the queue
+                if (rule != null) store(toTx(s, rule.category, rule.displayName), onNewTx)   // learned: skip the queue
                 else !isDuplicate(s.smsHash, s.amount, TYPE_DEBIT, s.refNo, s.timestamp, s.account) && unDao.insert(s) > 0
             }
             ParseResult.Ignore -> false
         }
+    }
 
     /** A learned rule beats the built-in merchant list. */
     private suspend fun withRule(t: Transaction): Transaction {
@@ -38,8 +42,18 @@ class SmsProcessor(context: Context) {
         return t.copy(category = rule.category, merchant = rule.displayName ?: t.merchant)
     }
 
-    private suspend fun store(t: Transaction): Boolean =
-        !isDuplicate(t.smsHash!!, t.amount, t.type, t.refNo, t.timestamp, t.account) && txDao.insertIfNew(t) > 0
+    private suspend fun store(t: Transaction, onNewTx: (suspend (Transaction) -> Unit)? = null): Boolean {
+        if (isDuplicate(t.smsHash!!, t.amount, t.type, t.refNo, t.timestamp, t.account)) return false
+        val id = txDao.insertIfNew(t)
+        if (id <= 0) return false
+        onNewTx?.invoke(t.copy(id = id))
+        return true
+    }
+
+    private suspend fun saveBalance(b: AccountBalance) {
+        val old = balDao.timestampOf(b.accountKey)
+        if (old == null || b.timestamp >= old) balDao.upsert(b)
+    }
 
     /**
      * 1) same SMS hash  2) same ref no + amount (bank SMS and UPI-app SMS for one payment)
@@ -137,6 +151,15 @@ class SmsProcessor(context: Context) {
             if (process(s.sender, s.body, s.timestamp)) { unDao.delete(s); n++ }
         }
         n
+    }
+
+    /** One-time: read balances out of SMS already stored (the inbox scan covers the rest). */
+    suspend fun backfillBalances() = withContext(Dispatchers.IO) {
+        for (t in txDao.getAllOnce().sortedBy { it.timestamp }) {
+            val body = t.rawSms ?: continue
+            SmsParser.balanceOf(t.sender.orEmpty(), body, t.timestamp)?.let { saveBalance(it) }
+        }
+        for (s in unDao.pendingAll()) SmsParser.balanceOf(s.sender, s.body, s.timestamp)?.let { saveBalance(it) }
     }
 
     suspend fun dismiss(s: UnparsedSms) = unDao.dismiss(s.id)

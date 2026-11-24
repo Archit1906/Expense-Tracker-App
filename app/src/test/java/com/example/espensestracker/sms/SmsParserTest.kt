@@ -76,4 +76,22 @@ class SmsParserTest {
         val r = p("VK-SBICRD", "Payment of Rs.5,000.00 received towards your SBI Credit Card ending 3312 on 19-10-26.") as ParseResult.Ok
         assertEquals(TRANSFER_CATEGORY, r.tx.category)
     }
+
+    @Test fun balanceIsExtracted() {
+        val b = SmsParser.balanceOf("VM-HDFCBK", "Sent Rs.1,240.00 from HDFC Bank A/C **4921 to VPA swiggy@icici on 19-10-26. Ref 4293810293. Avail Bal: INR 1,42,390.40", 1L)!!
+        assertEquals(142390.40, b.amount, 0.001)
+        assertEquals("4921", b.last4)
+        assertEquals("BALANCE", b.kind)
+        assertEquals("HDFC", b.bank)
+    }
+
+    @Test fun creditLimitIsSeparateKind() {
+        val b = SmsParser.balanceOf("VK-SBICRD", "Txn of INR 500.00 spent on your SBI Credit Card ending 3312 at X. Avl Limit: Rs 85,000.00", 1L)!!
+        assertEquals("LIMIT", b.kind)
+        assertEquals(85000.0, b.amount, 0.001)
+    }
+
+    @Test fun noBalanceMeansNull() {
+        assertEquals(null, SmsParser.balanceOf("VM-HDFCBK", "Sent Rs.100.00 from HDFC Bank A/C **4921 to VPA swiggy@icici", 1L))
+    }
 }

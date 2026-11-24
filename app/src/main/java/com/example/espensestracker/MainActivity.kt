@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
@@ -34,6 +37,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.espensestracker.ui.*
 import com.example.espensestracker.util.AppSettings
+import com.example.espensestracker.work.WeeklyScheduler
 
 // FragmentActivity (not plain ComponentActivity) because BiometricPrompt needs it.
 class MainActivity : FragmentActivity() {
@@ -46,6 +50,7 @@ class MainActivity : FragmentActivity() {
         AppSettings.load(this)
         applySecureFlag()
         locked = AppSettings.lockEnabled
+        if (AppSettings.weeklyEnabled) WeeklyScheduler.schedule(this)
         setContent {
             LedgerTheme { if (locked) LockScreen(::authenticate) else ExpenseApp() }
         }
@@ -93,7 +98,7 @@ private fun LockScreen(onUnlock: () -> Unit) {
     LaunchedEffect(Unit) { onUnlock() }
     Surface(Modifier.fillMaxSize(), color = Paper) {
         Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
-            Text("🔒", style = MaterialTheme.typography.displayMedium)
+            Icon(Icons.Default.Lock, null, Modifier.size(48.dp), tint = Gold)
             Text("Expense Tracker is locked", Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
             Button(onUnlock, colors = ButtonDefaults.buttonColors(containerColor = Gold)) { Text("Unlock") }
         }
@@ -104,8 +109,8 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 
 private val tabs = listOf(
     Tab("home", "Home", Icons.Default.Home),
-    Tab("transactions", "Transactions", Icons.AutoMirrored.Filled.List),
-    Tab("insights", "Insights", Icons.Default.Star),
+    Tab("transactions", "Transactions", Icons.Filled.ReceiptLong),
+    Tab("insights", "Insights", Icons.Filled.Insights),
     Tab("settings", "Settings", Icons.Default.Settings)
 )
 
@@ -117,7 +122,7 @@ fun ExpenseApp(vm: ExpenseViewModel = viewModel()) {
 
     Scaffold(
         bottomBar = {
-            if (showTabs) NavigationBar(containerColor = Color.White) {
+            if (showTabs) NavigationBar(containerColor = CardBg) {
                 tabs.forEach { t ->
                     NavigationBarItem(
                         selected = route == t.route,
@@ -128,7 +133,7 @@ fun ExpenseApp(vm: ExpenseViewModel = viewModel()) {
                             }
                         },
                         icon = { Icon(t.icon, null) }, label = { Text(t.label) },
-                        colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFFF4E6C3), selectedIconColor = Ink)
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = GoldSoft, selectedIconColor = Ink)
                     )
                 }
             }

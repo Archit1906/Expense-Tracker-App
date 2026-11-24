@@ -27,6 +27,15 @@ interface MerchantRuleDao {
     @Query("SELECT * FROM merchant_rules ORDER BY merchantKey")
     fun observeAll(): Flow<List<MerchantRule>>
 
+    @Query("SELECT * FROM merchant_rules")
+    suspend fun getAllOnce(): List<MerchantRule>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(list: List<MerchantRule>)
+
+    @Query("DELETE FROM merchant_rules")
+    suspend fun deleteAll()
+
     @Query("DELETE FROM merchant_rules WHERE merchantKey = :key")
     suspend fun delete(key: String)
 }

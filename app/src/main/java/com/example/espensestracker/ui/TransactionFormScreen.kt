@@ -19,10 +19,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontFamily
 import com.example.espensestracker.data.*
+import androidx.compose.material.icons.filled.DateRange
 import com.example.espensestracker.sms.SmsParser
+import com.example.espensestracker.util.mergeDate
+import com.example.espensestracker.util.utcMidnight
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /** Used for both "new transaction" (id = -1) and "expense detail / edit". */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionFormScreen(vm: ExpenseViewModel, id: Long, onDone: () -> Unit) {
     var existing by remember { mutableStateOf<Transaction?>(null) }
@@ -33,16 +39,32 @@ fun TransactionFormScreen(vm: ExpenseViewModel, id: Long, onDone: () -> Unit) {
     var note by remember { mutableStateOf("") }
     var tax by remember { mutableStateOf(false) }
     var learn by remember { mutableStateOf(true) }
+    var dateMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var showDate by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(id) {
         if (id > 0) vm.get(id)?.let { t ->
             existing = t; amount = t.amount.toString().removeSuffix(".0"); type = t.type
-            merchant = t.merchant ?: ""; category = t.category; note = t.note ?: ""; tax = t.taxDeductible
+            merchant = t.merchant ?: ""; category = t.category; note = t.note ?: ""; tax = t.taxDeductible; dateMillis = t.timestamp
         }
     }
 
     Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (showDate) {
+            val state = rememberDatePickerState(
+                initialSelectedDateMillis = utcMidnight(dateMillis),
+                selectableDates = object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= System.currentTimeMillis() + 86_400_000L
+                }
+            )
+            DatePickerDialog(
+                onDismissRequest = { showDate = false },
+                confirmButton = { TextButton({ state.selectedDateMillis?.let { dateMillis = mergeDate(dateMillis, it) }; showDate = false }) { Text("OK") } },
+                dismissButton = { TextButton({ showDate = false }) { Text("Cancel") } }
+            ) { DatePicker(state) }
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onDone) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
             Column {
@@ -66,6 +88,12 @@ fun TransactionFormScreen(vm: ExpenseViewModel, id: Long, onDone: () -> Unit) {
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 isError = error != null, supportingText = error?.let { m -> { Text(m) } }
             )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton({ showDate = true }, Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.DateRange, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault()).format(Date(dateMillis)))
+            }
         }
 
         existing?.takeIf { it.source == SOURCE_SMS }?.let { t ->
@@ -76,7 +104,7 @@ fun TransactionFormScreen(vm: ExpenseViewModel, id: Long, onDone: () -> Unit) {
                 Text("Source account: $acct", fontSize = 13.sp)
                 t.refNo?.let { Text("UTR / Ref: $it", fontSize = 13.sp) }
                 Spacer(Modifier.height(8.dp))
-                Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = Color.White) {
+                Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = CardBg) {
                     Text(t.rawSms.orEmpty(), Modifier.padding(12.dp), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                 }
             }
@@ -87,7 +115,7 @@ fun TransactionFormScreen(vm: ExpenseViewModel, id: Long, onDone: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 CATEGORY_LIST.forEach { c ->
-                    FilterChip(category == c.name, { category = c.name }, { Text("${c.emoji} ${c.name}") }, colors = chipColors())
+                    FilterChip(category == c.name, { category = c.name }, { Text(c.name) }, leadingIcon = { Icon(c.icon, null, Modifier.size(18.dp)) }, colors = chipColors())
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -120,7 +148,7 @@ fun TransactionFormScreen(vm: ExpenseViewModel, id: Long, onDone: () -> Unit) {
                     vm.save(
                         (existing ?: Transaction(amount = v)).copy(
                             amount = v, type = type, merchant = merchant.trim().ifBlank { null },
-                            category = category, note = note.trim().ifBlank { null }, taxDeductible = tax
+                            category = category, note = note.trim().ifBlank { null }, taxDeductible = tax, timestamp = dateMillis
                         ),
                         learn && merchant.isNotBlank()
                     )

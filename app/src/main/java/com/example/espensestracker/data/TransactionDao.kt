@@ -49,6 +49,18 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE rawSms IS NOT NULL AND category = 'Other'")
     suspend fun otherSms(): List<Transaction>
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(list: List<Transaction>)
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
+
+    @Query("SELECT amount FROM transactions WHERE merchantKey = :key AND type = 'DEBIT' AND category != 'Transfers' AND timestamp < :before ORDER BY timestamp DESC LIMIT 30")
+    suspend fun merchantAmounts(key: String, before: Long): List<Double>
+
+    @Query("SELECT amount FROM transactions WHERE type = 'DEBIT' AND category != 'Transfers' AND timestamp >= :since AND timestamp < :before ORDER BY timestamp DESC LIMIT 200")
+    suspend fun recentAmounts(since: Long, before: Long): List<Double>
+
     @Update
     suspend fun update(transaction: Transaction)
 
