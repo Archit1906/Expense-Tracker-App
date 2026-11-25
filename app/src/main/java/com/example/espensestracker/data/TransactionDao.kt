@@ -1,0 +1,72 @@
+package com.example.espensestracker.data
+
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface TransactionDao {
+
+    /** Returns the new row id, or -1 if it was ignored as a duplicate (same smsHash). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfNew(transaction: Transaction): Long
+
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
+    fun getAll(): Flow<List<Transaction>>
+
+    @Query(
+        "SELECT * FROM transactions " +
+            "WHERE timestamp BETWEEN :from AND :to ORDER BY timestamp DESC"
+    )
+    fun getByMonth(from: Long, to: Long): Flow<List<Transaction>>
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE smsHash = :hash")
+    suspend fun countHash(hash: String): Int
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE refNo = :ref AND amount = :amount")
+    suspend fun countRef(ref: String, amount: Double): Int
+
+    @Query(
+        "SELECT COUNT(*) FROM transactions WHERE amount = :amount AND type = :type " +
+            "AND timestamp BETWEEN :from AND :to " +
+            "AND (:account IS NULL OR account IS NULL OR account = :account)"
+    )
+    suspend fun countNear(amount: Double, type: String, from: Long, to: Long, account: String?): Int
+
+    @Query("UPDATE transactions SET category = :category, merchant = COALESCE(:merchant, merchant) WHERE merchantKey = :key")
+    suspend fun applyRule(key: String, category: String, merchant: String?)
+
+    @Query("SELECT * FROM transactions WHERE merchantKey IS NULL")
+    suspend fun missingKeys(): List<Transaction>
+
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
+    suspend fun getAllOnce(): List<Transaction>
+
+    @Query("SELECT * FROM transactions WHERE rawSms IS NOT NULL AND category = 'Other'")
+    suspend fun otherSms(): List<Transaction>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(list: List<Transaction>)
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
+
+    @Query("SELECT amount FROM transactions WHERE merchantKey = :key AND type = 'DEBIT' AND category != 'Transfers' AND timestamp < :before ORDER BY timestamp DESC LIMIT 30")
+    suspend fun merchantAmounts(key: String, before: Long): List<Double>
+
+    @Query("SELECT amount FROM transactions WHERE type = 'DEBIT' AND category != 'Transfers' AND timestamp >= :since AND timestamp < :before ORDER BY timestamp DESC LIMIT 200")
+    suspend fun recentAmounts(since: Long, before: Long): List<Double>
+
+    @Update
+    suspend fun update(transaction: Transaction)
+
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    suspend fun getById(id: Long): Transaction?
+
+    @Delete
+    suspend fun delete(transaction: Transaction)
+}
